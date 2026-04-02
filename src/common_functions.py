@@ -1,7 +1,5 @@
 import numpy as np
-from pathlib import Path
 
-import porepy as pp
 import pygeon as pg
 
 from elastic_pb import ElasticProblem
@@ -64,15 +62,15 @@ def solve_and_export(sd, folder_export, export_name, cell_data=None):
     # Step 2: assemble and solve the discrete elasticity system.
     elastic_pb = ElasticProblem(sd)
     A, b = elastic_pb.assemble_problem(param, _default_body_force, top)
-    u = elastic_pb.solve_linear_system(A, b, bottom)
+    u, sigma = elastic_pb.solve_linear_system(A, b, bottom)
 
-    # Step 3: export displacement and optional cell data in one write.
-    # This avoids a second write with the same base name that can hide/overwrite
-    # the displacement field in post-processing.
-    save = pp.Exporter(sd, export_name, folder_name=str(Path(folder_export)))
-    if cell_data:
-        save.write_vtu(data_pt=[("u", u)], data=cell_data)
-    else:
-        save.write_vtu(data_pt=[("u", u)])
+    # Step 3: export through ElasticProblem only (single exporter path).
+    elastic_pb.export_solution(
+        u,
+        sigma,
+        folder_export,
+        export_name=export_name,
+        cell_data=cell_data,
+    )
 
     return u

@@ -1,12 +1,8 @@
 """Utilities to assemble, solve, and export a linear elasticity problem."""
 
-from __future__ import annotations
-
 from pathlib import Path
-from typing import Any, cast
 
 import numpy as np
-import numpy.typing as npt
 
 import pygeon as pg
 import porepy as pp
@@ -22,7 +18,7 @@ class ElasticProblem:
     Object exposing methods to assemble, solve, and export elasticity solutions.
     """
 
-    def __init__(self, sd: Any, key: str = "elasticity") -> None:
+    def __init__(self, sd, key="elasticity"):
         """Create an elasticity problem helper.
 
         Input:
@@ -38,10 +34,10 @@ class ElasticProblem:
 
     def assemble_problem(
         self,
-        param: dict[str, Any],
-        body_force: Any,
-        nat_bc_faces: Any,
-    ) -> tuple[Any, Any]:
+        param,
+        body_force,
+        nat_bc_faces,
+    ):
         """Assemble stiffness matrix and natural-boundary right-hand side.
 
         Input:
@@ -50,10 +46,10 @@ class ElasticProblem:
         Output:
         (A, b) with system matrix A and right-hand-side vector b.
         """
-        data = pp.initialize_data({}, self.key, param)
+        self.data = pp.initialize_data({}, self.key, param)
 
         # Step 1: assemble the stiffness matrix from material parameters.
-        A = self.vec_p1.assemble_stiff_matrix(self.sd, data)
+        A = self.vec_p1.assemble_stiff_matrix(self.sd, self.data)
 
         # Step 2: assemble Neumann (natural) boundary contribution.
         b = self.vec_p1.assemble_nat_bc(self.sd, body_force, nat_bc_faces)
@@ -62,10 +58,10 @@ class ElasticProblem:
 
     def solve_linear_system(
         self,
-        A: Any,
-        b: Any,
-        ess_bc_faces: Any,
-    ) -> npt.NDArray[np.float64]:
+        A,
+        b,
+        ess_bc_faces,
+    ):
         """Solve the linear system with essential (Dirichlet) constraints.
 
         Input:
@@ -81,28 +77,44 @@ class ElasticProblem:
         # Step 2: solve for nodal displacement unknowns.
         u = ls.solve()
 
+        sigma = self.vec_p1.compute_stress(self.sd, u, self.data)
+
         # Step 3: in 2-D, pad with a zero z-component for visualization tools.
         if self.sd.dim == 2:
-            return np.hstack((u, np.zeros(self.sd.num_nodes))).reshape((3, -1))
-        else:
-            return u
+            u = np.hstack((u, np.zeros(self.sd.num_nodes))).reshape((3, -1))
+
+        return u, sigma
 
     def export_solution(
         self,
-        u: npt.NDArray[np.float64],
-        folder_export: str | Path,
-        export_name: str = "sol",
-    ) -> None:
+        u,
+        sigma,
+        folder_export,
+        export_name="sol",
+        cell_data=None,
+    ):
         """Export displacement data to VTU/PVD files.
 
         Input:
-        u displacement array, folder_export output directory, and export_name
-        base name used for written files.
+        u displacement array, sigma stress array, folder_export output directory,
+        export_name base name, and optional extra cell_data.
 
         Output:
         Files written on disk for visualization (no value returned).
         """
-        # Create exporter and write point-data field named "u".
+        # Create exporter and write point data + stress components as cell data.
         export_folder = Path(folder_export)
-        save = pp.Exporter(self.sd, cast(Any, export_name), folder_name=export_folder)
-        save.write_vtu(data_pt=[("u", u)])
+        save = pp.Exporter(self.sd, export_name, folder_name=export_folder)
+
+        # Export scalar stress components per cell for easier post-processing.
+        data = [
+            ("cell_sigma_xx", sigma[0, 0, :]),
+            ("cell_sigma_xy", sigma[0, 1, :]),
+            ("cell_sigma_yy", sigma[1, 1, :]),
+        ]
+
+        # Append any caller-provided cell fields (for example layer id).
+        if cell_data:
+            data.extend(cell_data)
+
+        save.write_vtu(data_pt=[("u", u)], data=data)
