@@ -1,0 +1,18 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Editor settings
+.vscode/
+
+# Generated outputs
+src/results/
+
+# Generated mesh/geometry artifacts
+*.msh
+*.xao
+*.geo_unrolled

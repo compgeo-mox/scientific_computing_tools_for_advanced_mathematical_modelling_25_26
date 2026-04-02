@@ -13,17 +13,23 @@ import porepy as pp
 
 
 class ElasticProblem:
-    """Wrapper for the discrete linear-elasticity workflow on a single grid."""
+    """Wrapper for the discrete linear-elasticity workflow on one grid.
+
+    Input:
+    A spatial discretization object and an optional data key.
+
+    Output:
+    Object exposing methods to assemble, solve, and export elasticity solutions.
+    """
 
     def __init__(self, sd: Any, key: str = "elasticity") -> None:
         """Create an elasticity problem helper.
 
-        Parameters
-        ----------
-        sd
-            Spatial discretization object (typically a PorePy grid).
-        key
-            Data dictionary key used by PorePy/PyGeoN operators.
+        Input:
+        sd (grid-like discretization object), key (string used in data dictionaries).
+
+        Output:
+        Initialized ElasticProblem instance storing the grid and FE operator.
         """
         self.sd = sd
         self.key = key
@@ -38,26 +44,18 @@ class ElasticProblem:
     ) -> tuple[Any, Any]:
         """Assemble stiffness matrix and natural-boundary right-hand side.
 
-        Parameters
-        ----------
-        param
-            Material and boundary-condition parameters expected by PorePy.
-        body_force
-            Prescribed force values on natural boundary faces.
-        nat_bc_faces
-            Indices of faces where natural boundary conditions are applied.
+        Input:
+        param (material/BC parameters), body_force function, nat_bc_faces indices.
 
-        Returns
-        -------
-        tuple
-            The linear operator `A` and right-hand side vector `b`.
+        Output:
+        (A, b) with system matrix A and right-hand-side vector b.
         """
         data = pp.initialize_data({}, self.key, param)
 
-        # Assemble linear system.
+        # Step 1: assemble the stiffness matrix from material parameters.
         A = self.vec_p1.assemble_stiff_matrix(self.sd, data)
 
-        # Assemble natural boundary contribution.
+        # Step 2: assemble Neumann (natural) boundary contribution.
         b = self.vec_p1.assemble_nat_bc(self.sd, body_force, nat_bc_faces)
 
         return A, b
@@ -68,45 +66,43 @@ class ElasticProblem:
         b: Any,
         ess_bc_faces: Any,
     ) -> npt.NDArray[np.float64]:
-        """Solve the assembled linear system with essential constraints.
+        """Solve the linear system with essential (Dirichlet) constraints.
 
-        Parameters
-        ----------
-        A
-            System matrix returned by the finite-element assembly.
-        b
-            Right-hand side vector of the linear system.
-        ess_bc_faces
-            Indices of faces with essential (Dirichlet) boundary conditions.
+        Input:
+        A (system matrix), b (right-hand side), ess_bc_faces indices.
 
-        Returns
-        -------
-        numpy.ndarray
-            Displacement field; in 2D, it is padded to three components for
-            VTK compatibility.
+        Output:
+        Displacement array u; in 2-D it is padded to 3 components for VTK.
         """
+        # Step 1: build the linear system and enforce essential BCs.
         ls = pg.LinearSystem(A, b)
         ls.flag_ess_bc(ess_bc_faces, np.zeros(self.vec_p1.ndof(self.sd)))
+
+        # Step 2: solve for nodal displacement unknowns.
         u = ls.solve()
 
-        # Pad to 3D for VTK output compatibility.
+        # Step 3: in 2-D, pad with a zero z-component for visualization tools.
         if self.sd.dim == 2:
             return np.hstack((u, np.zeros(self.sd.num_nodes))).reshape((3, -1))
         else:
             return u
 
     def export_solution(
-        self, u: npt.NDArray[np.float64], folder_export: str | Path
+        self,
+        u: npt.NDArray[np.float64],
+        folder_export: str | Path,
+        export_name: str = "sol",
     ) -> None:
         """Export displacement data to VTU/PVD files.
 
-        Parameters
-        ----------
-        u
-            Displacement array to be exported.
-        folder_export
-            Destination directory where result files are written.
+        Input:
+        u displacement array, folder_export output directory, and export_name
+        base name used for written files.
+
+        Output:
+        Files written on disk for visualization (no value returned).
         """
+        # Create exporter and write point-data field named "u".
         export_folder = Path(folder_export)
-        save = pp.Exporter(self.sd, cast(Any, "sol"), folder_name=export_folder)
+        save = pp.Exporter(self.sd, cast(Any, export_name), folder_name=export_folder)
         save.write_vtu(data_pt=[("u", u)])

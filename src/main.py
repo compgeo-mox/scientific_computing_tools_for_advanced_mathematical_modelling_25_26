@@ -1,116 +1,62 @@
-import sys
-import numpy as np
-from pathlib import Path
+"""Single command-line entry point for all elasticity grid cases.
 
-import porepy as pp
-import pygeon as pg
+Usage examples:
+    python src/main.py
+    python src/main.py --case unit
+    python src/main.py --case layered_hole
+"""
 
-folder = Path(__file__).parent
-sys.path.append(str(folder))
+import argparse
 
-from create_grid import create_grid_with_hole, create_layered_grid_with_hole, layers
-from elastic_pb import ElasticProblem
+from main_layered_grid import main as main_layered
+from main_layered_grid_hole import main as main_layered_hole
+from main_unit_grid import main as main_unit
+from main_unit_grid_hole import main as main_unit_hole
 
 
 def main():
-    """Solve a 2D linear elasticity problem on the generated constrained grid."""
+    """Dispatch to a case-specific elasticity entry point.
 
-    def body_force(_: np.ndarray) -> np.ndarray:
-        return np.array([0, -1e-3])
+    Input:
+    Optional --case argument selecting one grid configuration.
 
-    mesh_size = 0.1
-    sd = create_grid_with_hole(mesh_size)
-
-    lambda_ = 1
-    mu = 0.5
-    param = {pg.LAME_LAMBDA: lambda_, pg.LAME_MU: mu}
-
-    # Displacement is a vector field: mark essential/natural boundaries.
-    bottom = np.hstack([np.isclose(sd.nodes[1, :], 0)] * sd.dim)
-    top = np.isclose(sd.face_centers[1, :], 1)
-
-    elastic_pb = ElasticProblem(sd)
-
-    # Assemble and solve the linear system.
-    A, b = elastic_pb.assemble_problem(param, body_force, top)
-    u = elastic_pb.solve_linear_system(A, b, bottom)
-
-    # Export solution for visualization.
-    folder_export = folder / "results"
-    elastic_pb.export_solution(u, folder_export)
-
-
-def example_layers() -> None:
-    """Demo: create a layered geological grid and export the layer-index field.
-
-    Builds a 2×1 rectangular domain with four horizontal geological layers
-    displaced by an inclined fault.  The layer-index scalar field is exported
-    as cell data so it can be opened in ParaView and coloured by layer.
-
-    The returned ``cell_layer`` array (one integer per cell) can also be used
-    to assign different PDE data — e.g. Lamé parameters — to each layer::
-
-        lambda_per_layer = [1.0, 2.0, 1.5, 0.8]
-        lam = np.array([lambda_per_layer[k] for k in cell_layer])
+    Output:
+    Runs the selected solver workflow and writes result files.
     """
-    mesh_size = 0.05
-    sd, cell_layer = layers(
-        mesh_size,
-        Lx=2.0,
-        Ly=1.0,
-        n_layers=4,
-        frac_x_bottom=0.35,
-        frac_x_top=0.60,
-        fault_displacement=0.08,
+    parser = argparse.ArgumentParser(
+        description="Run elasticity on a selected grid configuration."
     )
-
-    n_layer_types = int(cell_layer.max()) + 1
-    print(f"Grid: {sd.num_cells} cells, {sd.num_nodes} nodes, {n_layer_types} layers")
-    for i in range(n_layer_types):
-        print(f"  Layer {i}: {int((cell_layer == i).sum())} cells")
-
-    # Export layer index as a cell scalar for visualisation in ParaView.
-    # Open results/layers.pvd and colour by the 'layer' field.
-    folder_export = folder / "results"
-    save = pp.Exporter(sd, "layers", folder_name=str(folder_export))
-    save.write_vtu(data=[("layer", cell_layer.astype(float))])
-
-
-def example_layers_with_hole() -> None:
-    """Demo: layered domain with fault plus hole, exported with layer IDs."""
-    mesh_size = 0.05
-    sd, cell_layer = create_layered_grid_with_hole(
-        mesh_size=mesh_size,
-        Lx=2.0,
-        Ly=1.0,
-        n_layers=4,
-        frac_x_bottom=0.35,
-        frac_x_top=0.60,
-        fault_displacement=0.08,
-        roughness=0.02,
-        n_seg=5,
-        rng_seed=42,
-        center=(0.5, 0.5),
-        axes=(0.25, 0.14),
-        n_hole_points=32,
-        hole_noise_level=0.05,
-        hole_seed=123,
+    parser.add_argument(
+        "--case",
+        choices=["unit", "unit_hole", "layered", "layered_hole", "all"],
+        default="all",
+        help="Grid configuration to run (default: all).",
     )
+    args = parser.parse_args()
 
-    n_layer_types = int(cell_layer.max()) + 1
-    print(
-        "Layered+hole grid: "
-        f"{sd.num_cells} cells, {sd.num_nodes} nodes, {n_layer_types} layers"
-    )
-    for i in range(n_layer_types):
-        print(f"  Layer {i}: {int((cell_layer == i).sum())} cells")
+    # Simple case dispatcher to keep each workflow in its own module.
+    if args.case == "unit":
+        main_unit()
+    elif args.case == "unit_hole":
+        main_unit_hole()
+    elif args.case == "layered":
+        main_layered()
+    elif args.case == "layered_hole":
+        main_layered_hole()
+    else:
+        # Run every configuration so elasticity is solved on each grid type.
+        print("Running case: unit")
+        main_unit()
 
-    folder_export = folder / "results"
-    save = pp.Exporter(sd, "layers_hole", folder_name=str(folder_export))
-    save.write_vtu(data=[("layer", cell_layer.astype(float))])
+        print("Running case: unit_hole")
+        main_unit_hole()
+
+        print("Running case: layered")
+        main_layered()
+
+        print("Running case: layered_hole")
+        main_layered_hole()
 
 
 if __name__ == "__main__":
     main()
-    # example_layers()
-    # example_layers_with_hole()
