@@ -49,7 +49,7 @@ class ElasticProblem:
         self.data = pp.initialize_data({}, self.key, param)
 
         # Step 1: assemble the stiffness matrix from material parameters.
-        A = self.vec_p1.assemble_stiff_matrix(self.sd, self.data)
+        A = self.vec_p1.assemble_stiff_matrix_elasticity(self.sd, self.data)
 
         # Step 2: assemble Neumann (natural) boundary contribution.
         b = self.vec_p1.assemble_nat_bc(self.sd, body_force, nat_bc_faces)
