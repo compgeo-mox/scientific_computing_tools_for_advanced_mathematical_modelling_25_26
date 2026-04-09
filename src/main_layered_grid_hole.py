@@ -1,24 +1,25 @@
-import sys
-from pathlib import Path
+"""Run elasticity on the layered/faulted grid with hole."""
 
-folder = Path(__file__).parent
-sys.path.append(str(folder))
+from pathlib import Path
 
 from create_grid import create_layered_grid_with_hole
 from common_functions import solve_and_export
 
-
-"""Run elasticity on the layered/faulted grid with hole."""
+folder = Path(__file__).parent
 
 
 def main():
-    """Entry point for layered-grid-with-hole elasticity solve.
+    """Run the layered-grid-with-hole elasticity workflow.
 
-    Input:
-    No runtime input; geometric and hole settings are defined below.
+    Parameters
+    ----------
+    None
+        The script uses fixed settings defined inside the function.
 
-    Output:
-    Writes solution files in the results folder.
+    Returns
+    -------
+    None
+        Solution files are written to the results directory.
     """
     mesh_size = 0.05
 

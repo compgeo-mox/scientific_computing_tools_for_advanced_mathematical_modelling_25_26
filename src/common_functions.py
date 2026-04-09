@@ -13,25 +13,35 @@ material setup, solve workflow, and export behavior.
 
 
 def _default_traction(_):
-    """Return the default constant traction [fx, fy].
+    """Return the default constant traction vector.
 
-    Input:
-    Unused point coordinates.
+    Parameters
+    ----------
+    _ : np.ndarray
+        Unused input accepted for compatibility with callback signatures.
 
-    Output:
-    Constant 2-D traction vector.
+    Returns
+    -------
+    np.ndarray
+        Constant traction vector ``[fx, fy]``.
     """
     return np.array([0.0, -1e-3])
 
 
 def _standard_boundary_masks(sd):
-    """Build standard bottom Dirichlet and top Neumann masks.
+    """Build standard bottom-Dirichlet and top-Neumann masks.
 
-    Input:
-    sd grid object with nodes and face centers.
+    Parameters
+    ----------
+    sd : pg.Grid
+        Grid object containing node coordinates and face centers.
 
-    Output:
-    (bottom, top) boolean masks for essential and natural boundaries.
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        ``(bottom, top)`` boolean masks, where ``bottom`` selects displacement
+        dofs constrained by essential conditions and ``top`` selects faces with
+        natural traction conditions.
     """
     # Use geometric min/max so this also works for non-unit domains.
     y_min = float(np.min(sd.nodes[1, :]))
@@ -45,13 +55,23 @@ def _standard_boundary_masks(sd):
 
 
 def solve_and_export(sd, folder_export, export_name, cell_data=None):
-    """Solve linear elasticity on a grid and export fields.
+    """Solve linear elasticity on a grid and export solution fields.
 
-    Input:
-    sd grid, folder_export path, export_name base name, optional cell_data list.
+    Parameters
+    ----------
+    sd : pg.Grid
+        Grid used for discretization and assembly.
+    folder_export : str or pathlib.Path
+        Output directory where exported files are written.
+    export_name : str
+        Base name used by the exporter for output files.
+    cell_data : list[tuple[str, np.ndarray]] or None, optional
+        Optional additional cell fields to export.
 
-    Output:
-    Writes VTU/PVD files to disk and returns displacement array u.
+    Returns
+    -------
+    np.ndarray
+        Displacement field returned by the linear solver.
     """
     # Step 1: define material parameters and standard boundary masks.
     lambda_ = 1.0

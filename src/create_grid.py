@@ -22,15 +22,37 @@ def create_layered_grid(
     n_seg=5,
     rng_seed=42,
 ):
-    """Create a layered/faulted 2-D domain and classify each cell by layer.
+    """Create a layered/faulted 2-D domain and classify cells by layer.
 
-    Input:
-    mesh_size, Lx, Ly, n_layers, frac_x_bottom, frac_x_top,
-    fault_displacement, roughness, n_seg, rng_seed.
+    Parameters
+    ----------
+    mesh_size : float
+        Target mesh size used by the grid generator.
+    Lx : float, optional
+        Domain length along x.
+    Ly : float, optional
+        Domain length along y.
+    n_layers : int, optional
+        Number of geological layers.
+    frac_x_bottom : float, optional
+        Fault x-position fraction at ``y = 0``.
+    frac_x_top : float, optional
+        Fault x-position fraction at ``y = Ly``.
+    fault_displacement : float, optional
+        Vertical offset applied to right-block interfaces, as a fraction of
+        ``Ly``.
+    roughness : float, optional
+        Standard deviation for random perturbations of interface points.
+    n_seg : int, optional
+        Number of polyline segments used per interface side.
+    rng_seed : int, optional
+        Seed controlling random interface perturbations.
 
-    Output:
-    (sd, cell_layer) where sd is the generated grid and cell_layer stores
-    one integer geological-layer index per cell.
+    Returns
+    -------
+    tuple[pg.Grid, np.ndarray]
+        ``(sd, cell_layer)`` where ``sd`` is the generated grid and
+        ``cell_layer`` stores one integer layer id per cell.
     """
     if mesh_size <= 0:
         raise ValueError("mesh_size must be > 0")
@@ -94,15 +116,47 @@ def create_layered_grid_with_hole(
     hole_noise_level=0.01,
     hole_seed=123,
 ):
-    """Create layered/faulted grid and carve a noisy elliptical hole.
+    """Create a layered/faulted grid and carve a noisy elliptical hole.
 
-    Input:
-    Same layered-domain inputs as create_layered_grid plus hole controls:
-    center, axes, n_hole_points, hole_noise_level, hole_seed.
+    Parameters
+    ----------
+    mesh_size : float
+        Target mesh size used by the grid generator.
+    Lx : float, optional
+        Domain length along x.
+    Ly : float, optional
+        Domain length along y.
+    n_layers : int, optional
+        Number of geological layers.
+    frac_x_bottom : float, optional
+        Fault x-position fraction at ``y = 0``.
+    frac_x_top : float, optional
+        Fault x-position fraction at ``y = Ly``.
+    fault_displacement : float, optional
+        Vertical offset applied to right-block interfaces, as a fraction of
+        ``Ly``.
+    roughness : float, optional
+        Standard deviation for random perturbations of interface points.
+    n_seg : int, optional
+        Number of polyline segments used per interface side.
+    rng_seed : int, optional
+        Seed controlling random interface perturbations.
+    center : tuple[float, float] or None, optional
+        Hole center. If ``None``, the domain center is used.
+    axes : tuple[float, float], optional
+        Hole semi-axes ``(a, b)``.
+    n_hole_points : int, optional
+        Number of polygon vertices used to represent the hole.
+    hole_noise_level : float, optional
+        Relative radial noise amplitude for hole-shape perturbation.
+    hole_seed : int, optional
+        Seed controlling hole-shape perturbations.
 
-    Output:
-    (sd_hole, cell_layer_hole) where sd_hole excludes cells inside the hole
-    and cell_layer_hole contains layer ids for the remaining cells.
+    Returns
+    -------
+    tuple[pg.Grid, np.ndarray]
+        ``(sd_hole, cell_layer_hole)`` where ``sd_hole`` excludes cells inside
+        the hole and ``cell_layer_hole`` contains layer ids for remaining cells.
     """
     if center is None:
         center = (0.5 * Lx, 0.5 * Ly)
@@ -123,7 +177,7 @@ def create_layered_grid_with_hole(
     # Step 2: build a robust hole polygon; if needed, reduce noise gradually.
     hole_poly = None
     for attempt in range(8):
-        level = hole_noise_level * (0.7 ** attempt)
+        level = hole_noise_level * (0.7**attempt)
         candidate = _noisy_ellipse_polygon(
             center=center,
             axes=axes,
@@ -183,13 +237,36 @@ def layers(
     n_seg=5,
     rng_seed=42,
 ):
-    """Backward-compatible alias of create_layered_grid.
+    """Backward-compatible alias of :func:`create_layered_grid`.
 
-    Input:
-    Same arguments as create_layered_grid.
+    Parameters
+    ----------
+    mesh_size : float
+        Target mesh size used by the grid generator.
+    Lx : float, optional
+        Domain length along x.
+    Ly : float, optional
+        Domain length along y.
+    n_layers : int, optional
+        Number of geological layers.
+    frac_x_bottom : float, optional
+        Fault x-position fraction at ``y = 0``.
+    frac_x_top : float, optional
+        Fault x-position fraction at ``y = Ly``.
+    fault_displacement : float, optional
+        Vertical offset applied to right-block interfaces, as a fraction of
+        ``Ly``.
+    roughness : float, optional
+        Standard deviation for random perturbations of interface points.
+    n_seg : int, optional
+        Number of polyline segments used per interface side.
+    rng_seed : int, optional
+        Seed controlling random interface perturbations.
 
-    Output:
-    Same return tuple as create_layered_grid: (sd, cell_layer).
+    Returns
+    -------
+    tuple[pg.Grid, np.ndarray]
+        Same return tuple as :func:`create_layered_grid`, ``(sd, cell_layer)``.
     """
     return create_layered_grid(
         mesh_size=mesh_size,
@@ -208,11 +285,15 @@ def layers(
 def create_grid(mesh_size):
     """Create a simple unit-square grid.
 
-    Input:
-    mesh_size controlling grid resolution.
+    Parameters
+    ----------
+    mesh_size : float
+        Target mesh size controlling grid resolution.
 
-    Output:
-    sd, a 2-D unit-square grid with geometry precomputed.
+    Returns
+    -------
+    pg.Grid
+        Two-dimensional unit-square grid with geometry precomputed.
     """
     if mesh_size <= 0:
         raise ValueError("mesh_size must be > 0")
@@ -233,11 +314,25 @@ def create_grid_with_hole(
 ):
     """Create a unit-square grid with a noisy elliptical hole.
 
-    Input:
-    mesh_size and hole controls (center, axes, n_points, noise_level, rng_seed).
+    Parameters
+    ----------
+    mesh_size : float
+        Target mesh size used by the grid generator.
+    center : tuple[float, float], optional
+        Hole center in unit-square coordinates.
+    axes : tuple[float, float], optional
+        Hole semi-axes ``(a, b)``.
+    n_points : int, optional
+        Number of polygon vertices used to represent the hole.
+    noise_level : float, optional
+        Relative radial noise amplitude for hole-shape perturbation.
+    rng_seed : int, optional
+        Seed controlling hole-shape perturbations.
 
-    Output:
-    sd_hole, the unit-square grid with cells inside the hole removed.
+    Returns
+    -------
+    pg.Grid
+        Unit-square grid with cells inside the hole removed.
     """
     # Reuse the layered pipeline with a single flat layer and no fault throw.
     sd_hole, _ = create_layered_grid_with_hole(
@@ -265,12 +360,12 @@ def _polygon_to_3d(vertices_xy):
 
     Parameters
     ----------
-    vertices_xy : numpy.ndarray
+    vertices_xy : np.ndarray
         Polygon vertices in 2-D, shape (2, N).
 
     Returns
     -------
-    poly_3d : numpy.ndarray
+    poly_3d : np.ndarray
         Same polygon in 3-D format (z=0), shape (3, N).
     """
     # PorePy polygon utilities expect 3 coordinates per vertex.
@@ -282,14 +377,14 @@ def _remove_duplicate_vertices(vertices_xy, tol=1e-12):
 
     Parameters
     ----------
-    vertices_xy : numpy.ndarray
+    vertices_xy : np.ndarray
         Polygon vertices in 2-D, shape (2, N).
     tol : float
         Distance tolerance to detect duplicates.
 
     Returns
     -------
-    cleaned : numpy.ndarray
+    cleaned : np.ndarray
         Polygon vertices without repeated consecutive points.
     """
     # Keep the first vertex and filter out near-identical consecutive points.
@@ -312,12 +407,12 @@ def _points_in_polygon(sd, polygon_xy):
     ----------
     sd : pg.Grid
         Grid whose cell centers are tested.
-    polygon_xy : numpy.ndarray
+    polygon_xy : np.ndarray
         Polygon vertices in 2-D, shape (2, N).
 
     Returns
     -------
-    in_poly : numpy.ndarray
+    in_poly : np.ndarray
         Boolean mask of length sd.num_cells. True means inside polygon.
     """
     # Pre-clean and convert polygon so the geometry predicate is robust.
@@ -363,7 +458,7 @@ def _fault_x(y, Lx, Ly, xb, xt):
 
     Parameters
     ----------
-    y : float or numpy.ndarray
+    y : float or np.ndarray
         Vertical coordinate(s) where fault position is evaluated.
     Lx : float
         Domain length in x direction.
@@ -376,7 +471,7 @@ def _fault_x(y, Lx, Ly, xb, xt):
 
     Returns
     -------
-    x_fault : float or numpy.ndarray
+    x_fault : float or np.ndarray
         Fault x-position(s) in physical coordinates.
     """
     # Linear interpolation of fault location from bottom to top.
@@ -405,7 +500,7 @@ def _fault_segment(y0, y1, Lx, Ly, frac_x_bottom, frac_x_top, n=5):
 
     Returns
     -------
-    seg : numpy.ndarray
+    seg : np.ndarray
         Fault polyline points, shape (2, n).
     """
     # Sample y values and project them onto the slanted fault line.
@@ -429,14 +524,14 @@ def _noisy_polyline(x0, x1, y_mean, n_seg, roughness, rng):
         Number of segments in the polyline.
     roughness : float
         Standard deviation for y perturbations of interior points.
-    rng : numpy.random.Generator
+    rng : np.random.Generator
         Random generator used for reproducible noise.
 
     Returns
     -------
     segments : list
         List of pp.LineFracture segments.
-    polyline : numpy.ndarray
+    polyline : np.ndarray
         Polyline vertices, shape (2, n_seg + 1).
     """
     # Start from an equally spaced horizontal polyline.
@@ -515,7 +610,9 @@ def _build_layer_constraints(
     right_bounds[n_layers] = np.array([[x_fault_top, Lx], [Ly, Ly]])
 
     # Main fault line used as geometric discontinuity.
-    constraints.append(pp.LineFracture(np.array([[x_fault_bottom, x_fault_top], [0.0, Ly]])))
+    constraints.append(
+        pp.LineFracture(np.array([[x_fault_bottom, x_fault_top], [0.0, Ly]]))
+    )
 
     # Internal interfaces are rough and shifted on the right block.
     for i in range(1, n_layers):
@@ -525,8 +622,12 @@ def _build_layer_constraints(
         xf_left = float(_fault_x(y_left, Lx, Ly, frac_x_bottom, frac_x_top))
         xf_right = float(_fault_x(y_right, Lx, Ly, frac_x_bottom, frac_x_top))
 
-        left_fracs, left_poly = _noisy_polyline(0.0, xf_left, y_left, n_seg, roughness, rng)
-        right_fracs, right_poly = _noisy_polyline(xf_right, Lx, y_right, n_seg, roughness, rng)
+        left_fracs, left_poly = _noisy_polyline(
+            0.0, xf_left, y_left, n_seg, roughness, rng
+        )
+        right_fracs, right_poly = _noisy_polyline(
+            xf_right, Lx, y_right, n_seg, roughness, rng
+        )
 
         constraints.extend(left_fracs)
         constraints.extend(right_fracs)
@@ -541,9 +642,9 @@ def _left_piece_polygon(lower, upper, Lx, Ly, frac_x_bottom, frac_x_top):
 
     Parameters
     ----------
-    lower : numpy.ndarray
+    lower : np.ndarray
         Lower interface polyline, shape (2, N).
-    upper : numpy.ndarray
+    upper : np.ndarray
         Upper interface polyline, shape (2, M).
     Lx : float
         Domain length in x direction.
@@ -556,11 +657,13 @@ def _left_piece_polygon(lower, upper, Lx, Ly, frac_x_bottom, frac_x_top):
 
     Returns
     -------
-    polygon_xy : numpy.ndarray
+    polygon_xy : np.ndarray
         Closed polygon vertices describing one left block piece.
     """
     # Connect lower and upper boundaries with fault side and left wall side.
-    fault_up = _fault_segment(lower[1, -1], upper[1, -1], Lx, Ly, frac_x_bottom, frac_x_top)
+    fault_up = _fault_segment(
+        lower[1, -1], upper[1, -1], Lx, Ly, frac_x_bottom, frac_x_top
+    )
     left_down = np.array([[0.0, 0.0], [upper[1, 0], lower[1, 0]]])
     return np.column_stack((lower, fault_up[:, 1:], np.fliplr(upper), left_down[:, 1:]))
 
@@ -570,9 +673,9 @@ def _right_piece_polygon(lower, upper, Lx, Ly, frac_x_bottom, frac_x_top):
 
     Parameters
     ----------
-    lower : numpy.ndarray
+    lower : np.ndarray
         Lower interface polyline, shape (2, N).
-    upper : numpy.ndarray
+    upper : np.ndarray
         Upper interface polyline, shape (2, M).
     Lx : float
         Domain length in x direction.
@@ -585,13 +688,17 @@ def _right_piece_polygon(lower, upper, Lx, Ly, frac_x_bottom, frac_x_top):
 
     Returns
     -------
-    polygon_xy : numpy.ndarray
+    polygon_xy : np.ndarray
         Closed polygon vertices describing one right block piece.
     """
     # Connect lower and upper boundaries with right wall side and fault side.
     right_up = np.array([[Lx, Lx], [lower[1, -1], upper[1, -1]]])
-    fault_down = _fault_segment(upper[1, 0], lower[1, 0], Lx, Ly, frac_x_bottom, frac_x_top)
-    return np.column_stack((lower, right_up[:, 1:], np.fliplr(upper), fault_down[:, 1:]))
+    fault_down = _fault_segment(
+        upper[1, 0], lower[1, 0], Lx, Ly, frac_x_bottom, frac_x_top
+    )
+    return np.column_stack(
+        (lower, right_up[:, 1:], np.fliplr(upper), fault_down[:, 1:])
+    )
 
 
 def _classify_layer_cells(
@@ -630,7 +737,7 @@ def _classify_layer_cells(
 
     Returns
     -------
-    cell_layer : numpy.ndarray
+    cell_layer : np.ndarray
         Integer layer id for each cell.
     """
     cell_layer = np.full(sd.num_cells, -1, dtype=int)
@@ -653,7 +760,9 @@ def _classify_layer_cells(
 
     # Rare unassigned boundary points are handled with a geometric fallback.
     if np.any(cell_layer < 0):
-        x_fault_at_cell = _fault_x(sd.cell_centers[1], Lx, Ly, frac_x_bottom, frac_x_top)
+        x_fault_at_cell = _fault_x(
+            sd.cell_centers[1], Lx, Ly, frac_x_bottom, frac_x_top
+        )
         cy_eff = sd.cell_centers[1].copy()
         right_block = sd.cell_centers[0] >= x_fault_at_cell
         cy_eff[right_block] -= fault_displacement * Ly
@@ -694,7 +803,7 @@ def _noisy_ellipse_polygon(
 
     Returns
     -------
-    polygon_xy : numpy.ndarray
+    polygon_xy : np.ndarray
         Noisy ellipse vertices, shape (2, n_points).
     """
     if n_points < 3:
@@ -733,7 +842,7 @@ def _segments_intersect(a, b, c, d):
 
     Parameters
     ----------
-    a, b, c, d : numpy.ndarray
+    a, b, c, d : np.ndarray
         Segment endpoints, each shape (2,).
 
     Returns
@@ -780,7 +889,7 @@ def _is_simple_polygon(polygon_xy):
 
     Parameters
     ----------
-    polygon_xy : numpy.ndarray
+    polygon_xy : np.ndarray
         Polygon vertices in 2-D, shape (2, N).
 
     Returns
@@ -816,7 +925,7 @@ def _polygon_constraints(polygon_xy):
 
     Parameters
     ----------
-    polygon_xy : numpy.ndarray
+    polygon_xy : np.ndarray
         Polygon vertices in 2-D, shape (2, N).
 
     Returns
@@ -848,7 +957,7 @@ def _subgrid_inside_polygon(sd, polygon_xy):
     ----------
     sd : pg.Grid
         Input grid.
-    polygon_xy : numpy.ndarray
+    polygon_xy : np.ndarray
         Polygon vertices in 2-D, shape (2, N).
 
     Returns
@@ -871,7 +980,7 @@ def _subgrid_outside_polygon(sd, polygon_xy):
     ----------
     sd : pg.Grid
         Input grid.
-    polygon_xy : numpy.ndarray
+    polygon_xy : np.ndarray
         Polygon vertices in 2-D, shape (2, N).
 
     Returns

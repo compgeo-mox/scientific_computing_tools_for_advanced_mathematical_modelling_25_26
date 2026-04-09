@@ -9,23 +9,35 @@ import porepy as pp
 
 
 class ElasticProblem:
-    """Wrapper for the discrete linear-elasticity workflow on one grid.
+    """Wrapper for the linear-elasticity workflow on one grid.
 
-    Input:
-    A spatial discretization object and an optional data key.
+    Parameters
+    ----------
+    sd : pg.Grid
+        Spatial discretization used by assembly and post-processing methods.
+    key : str, optional
+        Data-dictionary key under which elasticity parameters are stored.
 
-    Output:
-    Object exposing methods to assemble, solve, and export elasticity solutions.
+    Returns
+    -------
+    ElasticProblem
+        Instance exposing assembly, solve, and export utilities.
     """
 
     def __init__(self, sd, key="elasticity"):
-        """Create an elasticity problem helper.
+        """Initialize the elasticity helper.
 
-        Input:
-        sd (grid-like discretization object), key (string used in data dictionaries).
+        Parameters
+        ----------
+        sd : pg.Grid
+            Spatial discretization used by assembly and post-processing methods.
+        key : str, optional
+            Data-dictionary key under which elasticity parameters are stored.
 
-        Output:
-        Initialized ElasticProblem instance storing the grid and FE operator.
+        Returns
+        -------
+        None
+            Constructor initializes object state in place.
         """
         self.sd = sd
         self.key = key
@@ -33,13 +45,23 @@ class ElasticProblem:
         self.vec_p1 = pg.VecLagrange1(self.key)
 
     def assemble_problem(self, param, body_force, nat_bc_faces):
-        """Assemble stiffness matrix and natural-boundary right-hand side.
+        """Assemble system matrix and natural-boundary right-hand side.
 
-        Input:
-        param (material/BC parameters), body_force function, nat_bc_faces indices.
+        Parameters
+        ----------
+        param : dict
+            Material and boundary-condition parameters passed to ``pp.initialize_data``.
+        body_force : callable
+            Callback used by ``assemble_nat_bc`` to evaluate boundary traction.
+        nat_bc_faces : np.ndarray
+            Boolean mask or index array selecting faces with natural boundary
+            conditions.
 
-        Output:
-        (A, b) with system matrix A and right-hand-side vector b.
+        Returns
+        -------
+        tuple
+            ``(A, b)`` where ``A`` is the assembled stiffness matrix and ``b``
+            is the natural-boundary contribution to the right-hand side.
         """
         self.data = pp.initialize_data({}, self.key, param)
 
@@ -54,11 +76,22 @@ class ElasticProblem:
     def solve_linear_system(self, A, b, ess_bc_faces):
         """Solve the linear system with essential (Dirichlet) constraints.
 
-        Input:
-        A (system matrix), b (right-hand side), ess_bc_faces indices.
+        Parameters
+        ----------
+        A : scipy.sparse.spmatrix
+            Assembled linear-system matrix.
+        b : np.ndarray
+            Linear-system right-hand side.
+        ess_bc_faces : np.ndarray
+            Boolean mask or index array selecting displacement dofs constrained
+            by essential boundary conditions.
 
-        Output:
-        Displacement array u; in 2-D it is padded to 3 components for VTK.
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray]
+            ``(u, sigma)`` where ``u`` is the displacement field (padded to
+            three components in 2-D for VTK output) and ``sigma`` is the
+            computed stress tensor per cell.
         """
         # Step 1: build the linear system and enforce essential BCs.
         ls = pg.LinearSystem(A, b)
@@ -78,14 +111,25 @@ class ElasticProblem:
     def export_solution(
         self, u, sigma, folder_export, export_name="sol", cell_data=None
     ):
-        """Export displacement data to VTU/PVD files.
+        """Export displacement and stress data to VTU/PVD files.
 
-        Input:
-        u displacement array, sigma stress array, folder_export output directory,
-        export_name base name, and optional extra cell_data.
+        Parameters
+        ----------
+        u : np.ndarray
+            Displacement field to export as point data.
+        sigma : np.ndarray
+            Stress tensor field used to export scalar cell components.
+        folder_export : str or pathlib.Path
+            Output directory where export files are written.
+        export_name : str, optional
+            Base filename used by the exporter.
+        cell_data : list[tuple[str, np.ndarray]] or None, optional
+            Optional additional cell fields appended to default stress outputs.
 
-        Output:
-        Files written on disk for visualization (no value returned).
+        Returns
+        -------
+        None
+            Files are written to disk; the method does not return a value.
         """
         # Create exporter and write point data + stress components as cell data.
         export_folder = Path(folder_export)
