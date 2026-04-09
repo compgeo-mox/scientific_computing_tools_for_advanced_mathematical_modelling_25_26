@@ -32,12 +32,7 @@ class ElasticProblem:
 
         self.vec_p1 = pg.VecLagrange1(self.key)
 
-    def assemble_problem(
-        self,
-        param,
-        body_force,
-        nat_bc_faces,
-    ):
+    def assemble_problem(self, param, body_force, nat_bc_faces):
         """Assemble stiffness matrix and natural-boundary right-hand side.
 
         Input:
@@ -56,12 +51,7 @@ class ElasticProblem:
 
         return A, b
 
-    def solve_linear_system(
-        self,
-        A,
-        b,
-        ess_bc_faces,
-    ):
+    def solve_linear_system(self, A, b, ess_bc_faces):
         """Solve the linear system with essential (Dirichlet) constraints.
 
         Input:
@@ -86,12 +76,7 @@ class ElasticProblem:
         return u, sigma
 
     def export_solution(
-        self,
-        u,
-        sigma,
-        folder_export,
-        export_name="sol",
-        cell_data=None,
+        self, u, sigma, folder_export, export_name="sol", cell_data=None
     ):
         """Export displacement data to VTU/PVD files.
 

@@ -1,8 +1,6 @@
 import sys
 from pathlib import Path
 
-import numpy as np
-
 folder = Path(__file__).parent
 sys.path.append(str(folder))
 
