@@ -12,14 +12,14 @@ material setup, solve workflow, and export behavior.
 """
 
 
-def _default_body_force(_):
-    """Return the default constant body force [fx, fy].
+def _default_traction(_):
+    """Return the default constant traction [fx, fy].
 
     Input:
     Unused point coordinates.
 
     Output:
-    Constant 2-D body-force vector.
+    Constant 2-D traction vector.
     """
     return np.array([0.0, -1e-3])
 
@@ -61,7 +61,7 @@ def solve_and_export(sd, folder_export, export_name, cell_data=None):
 
     # Step 2: assemble and solve the discrete elasticity system.
     elastic_pb = ElasticProblem(sd)
-    A, b = elastic_pb.assemble_problem(param, _default_body_force, top)
+    A, b = elastic_pb.assemble_problem(param, _default_traction, top)
     u, sigma = elastic_pb.solve_linear_system(A, b, bottom)
 
     # Step 3: export through ElasticProblem only (single exporter path).
