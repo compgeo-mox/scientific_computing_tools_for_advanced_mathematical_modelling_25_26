@@ -1,0 +1,52 @@
+# Configuration file inspired by PorePy
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# Project information.
+[project]
+name = "sctamm_25_26"
+version = "0.1.0"
+description = "Scientific Computing Tools for Advanced Mathematical Modelling (2025-26)"
+readme = "Readme.md"
+license = { text = "GPL" }
+keywords = ["mechanical models"]
+maintainers = [
+    { name = "Anna Scotti", email = "anna.scotti@polimi.com" },
+    { name = "Alessio Fumagalli", email = "alessio.fumagalli@polimi.it" },
+]
+urls = { "Homepage" = "https://github.com/compgeo-mox/scientific_computing_tools_for_advanced_mathematical_modelling_25_26" }
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License (GPL)",
+    "Operating System :: OS Independent"
+]
+dependencies = [
+    "pygeon[development,testing] @ git+https://github.com/compgeo-mox/pygeon.git@main"
+]
+
+# Information for the build system.
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"pygeon" = [
+    "py.typed",
+]
+
+# Static analysis.
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E501"]
+ignore = [
+    "E731",  # do not assign a lambda expression, use a def
+    "E266",  # too many leading '#' for block comment
+]
+
+# MyPy
+[[tool.mypy.overrides]]
+disable_error_code = ["import-untyped"]
